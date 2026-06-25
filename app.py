@@ -34,109 +34,194 @@ chroma_vector_store = Chroma(
 # LLM Model
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
 
-uploaded_file = st.file_uploader("Select a file:")
+uploaded_file = st.file_uploader("Select a file..")
 
 
-if uploaded_file is not None:
+# if uploaded_file is not None:
+#     with st.spinner("Processing file..."):
+#         try:
+#             print("File info: ", uploaded_file)
+
+#             #save file in memory
+#             temp_file_path = uploaded_file.name
+
+#             with open(temp_file_path, "wb") as f:
+#                 f.write(uploaded_file.getbuffer())
+
+#             # PDF file loader
+#             loader = PyPDFLoader(temp_file_path)
+#             docs = loader.load()
+#             #print("Docs: ", docs)
+
+#             # create chunks
+#             chunks = text_splitter.split_documents(docs)
+
+#             # create embeddings
+#             # emb1 = embedding_model.embed_query(chunks[0].page_content)
+#             # print(emb1)
+
+#             #index embeddings
+#             chroma_ids = chroma_vector_store.add_documents(documents=chunks)
+
+#             retriever = chroma_vector_store.as_retriever(
+#                 search_type="similarity",
+#                 search_kwargs={"k": 2}
+#             )
+
+#             if prompt := st.chat_input("Prompt"):
+#                 print(prompt)
+
+#                 docs_retrieved = retriever.invoke(prompt)
+
+#                 context = "\n\n".join(
+#                     [doc.page_content for doc in docs_retrieved]
+#                 )
+
+#                 final_prompt = f"""
+#                     You are a helpful assistant.
+
+#                     Answer the question using only the context below.
+
+#                     Question:
+#                     {prompt}
+
+#                     Context:
+#                     {context}
+
+#                     If the answer is not found in the context, say:
+#                     "I don't have that information."
+#                 """
+
+
+
+#                 #create a prompt template
+#                 # system_prompt = """You're a helpful assistant. Please answer the following question {question}, only using the following information {document}.
+#                 # If you cant answer the question, just say you don't have that information."""
+
+#                 # prompt_template = ChatPromptTemplate.from_messages(
+#                 #     [
+#                 #         ("system", system_prompt)
+#                 #     ]
+#                 # )
+
+#                 # print("Prompt:", prompt)
+#                 # print("Retrieved Docs:", docs_retrieved)
+
+#                 # final_prompt = prompt_template.invoke({
+#                 #     "question": prompt,
+#                 #     "document": docs_retrieved
+#                 #     # "context": context
+                     
+#                 # })
+
+#                 # UI container
+#                 result_placeholder = st.empty()
+
+
+#                 #create complition
+#                 # complition = llm.invoke(final_prompt)
+#                 # print("Completion", complition)
+
+#                 # streaming the complition result
+#                 full_complition = ""
+#                 print(type(final_prompt))
+#                 print(final_prompt)
+#                 for chunk in llm.stream(final_prompt):
+#                     full_complition += chunk.content
+#                     result_placeholder.write(full_complition)
+
+
+#         except Exception as e:
+#             print(e)
+#             # traceback.print_exc()
+
+#         # Removes file after it is done
+
+#         finally:
+#             if os.path.exists(temp_file_path):
+#                 os.remove(temp_file_path)
+
+
+
+
+
+# Session State
+if "retriever" not in st.session_state:
+    st.session_state.retriever = None
+
+if uploaded_file is not None and st.session_state.retriever is None:
+
     with st.spinner("Processing file..."):
+
+        temp_file_path = uploaded_file.name
+
         try:
-            print("File info: ", uploaded_file)
-
-            #save file in memory
-            temp_file_path = uploaded_file.name
-
+            # Save uploaded file
             with open(temp_file_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
 
-            # PDF file loader
+            # Load PDF
             loader = PyPDFLoader(temp_file_path)
             docs = loader.load()
-            #print("Docs: ", docs)
 
-            # create chunks
+            # Create chunks
             chunks = text_splitter.split_documents(docs)
 
-            # create embeddings
-            # emb1 = embedding_model.embed_query(chunks[0].page_content)
-            # print(emb1)
+            # Store embeddings in Chroma
+            chroma_vector_store.add_documents(documents=chunks)
 
-            #index embeddings
-            chroma_ids = chroma_vector_store.add_documents(documents=chunks)
-
-            retriever = chroma_vector_store.as_retriever(
+            # Create retriever
+            st.session_state.retriever = chroma_vector_store.as_retriever(
                 search_type="similarity",
-                search_kwargs={"k": 2}
+                search_kwargs={"k": 4}
             )
 
-            if prompt := st.chat_input("Prompt"):
-                print(prompt)
-
-                docs_retrieved = retriever.invoke(prompt)
-
-                context = "\n\n".join(
-                    [doc.page_content for doc in docs_retrieved]
-                )
-
-                final_prompt = f"""
-                    You are a helpful assistant.
-
-                    Answer the question using only the context below.
-
-                    Question:
-                    {prompt}
-
-                    Context:
-                    {context}
-
-                    If the answer is not found in the context, say:
-                    "I don't have that information."
-                """
-
-
-
-                #create a prompt template
-                # system_prompt = """You're a helpful assistant. Please answer the following question {question}, only using the following information {document}.
-                # If you cant answer the question, just say you don't have that information."""
-
-                # prompt_template = ChatPromptTemplate.from_messages(
-                #     [
-                #         ("system", system_prompt)
-                #     ]
-                # )
-
-                # print("Prompt:", prompt)
-                # print("Retrieved Docs:", docs_retrieved)
-
-                # final_prompt = prompt_template.invoke({
-                #     "question": prompt,
-                #     "document": docs_retrieved
-                #     # "context": context
-                     
-                # })
-
-                # UI container
-                result_placeholder = st.empty()
-
-
-                #create complition
-                # complition = llm.invoke(final_prompt)
-                # print("Completion", complition)
-
-                # streaming the complition result
-                full_complition = ""
-                print(type(final_prompt))
-                print(final_prompt)
-                for chunk in llm.stream(final_prompt):
-                    full_complition += chunk.content
-                    result_placeholder.write(full_complition)
-
+            st.success("PDF processed successfully!")
 
         except Exception as e:
-            print(e)
-            # traceback.print_exc()
-
-        # Removes file after it is done
+            st.error(f"Error processing PDF: {e}")
 
         finally:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
+
+# Chat Interface
+if st.session_state.retriever is not None:
+
+    prompt = st.chat_input("Ask the question related to the contents in the document.")
+
+    if prompt:
+
+        try:
+            docs_retrieved = st.session_state.retriever.invoke(prompt)
+
+            context = "\n\n".join(
+                [doc.page_content for doc in docs_retrieved]
+            )
+
+            final_prompt = f"""
+                You are a helpful assistant.
+
+                Answer the question using ONLY the context below.
+
+                Question:
+                {prompt}
+
+                Context:
+                {context}
+
+                If the answer is not found in the context, say:
+                "I don't have that information."
+            """
+
+            result_placeholder = st.empty()
+            full_response = ""
+
+            for chunk in llm.stream(final_prompt):
+
+                if chunk.content:
+                    full_response += chunk.content
+                    result_placeholder.write(full_response)
+
+        except Exception as e:
+            st.error(f"Error generating response: {e}")
